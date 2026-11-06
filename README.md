@@ -16,11 +16,11 @@ php artisan serve
 ```
 Foto jurnal dan dokumen izin dilayani lewat rute aplikasi, jadi `storage:link` tidak wajib.
 
-## Akun demo (password `123456`)
+## Akun demo (password `123456`) (untuk waka passwordnya 1234567)
 | Username | Peran |
 |---|---|
 | waka (database lama: waka1) | Waka Kurikulum |
-| guru1, guru2 | Guru |
+| guru1,| Guru |
 | walikelas1 | Wali Kelas |
 | gurubk1 | Guru BK |
 | siswa1 | Siswa |
