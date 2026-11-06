@@ -1,0 +1,27 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('attendances', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('journal_id')->constrained('journals')->onDelete('cascade');
+    $table->foreignId('student_id')->constrained('users')->onDelete('cascade');
+    
+    $table->enum('status', ['sakit', 'izin', 'izin_tengah_jam', 'dispensasi', 'alpha']);
+    $table->text('note')->nullable();
+    
+    $table->timestamps();
+});
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('attendances');
+    }
+};
