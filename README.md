@@ -20,7 +20,7 @@ Foto jurnal dan dokumen izin dilayani lewat rute aplikasi, jadi `storage:link` t
 | Username | Peran |
 |---|---|
 | waka (database lama: waka1) | Waka Kurikulum |
-| guru1,| Guru |
+| guru1| Guru |
 | walikelas1 | Wali Kelas |
 | gurubk1 | Guru BK |
 | siswa1 | Siswa |
