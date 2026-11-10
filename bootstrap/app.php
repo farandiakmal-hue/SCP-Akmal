@@ -11,9 +11,6 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Hosting di belakang proxy/CDN (Cloudflare, Railway, dll.): kenali HTTPS dari header proxy
-        $middleware->trustProxies(at: '*');
-
         $middleware->alias([
             'role' => \App\Http\Middleware\EnsureRole::class,
         ]);

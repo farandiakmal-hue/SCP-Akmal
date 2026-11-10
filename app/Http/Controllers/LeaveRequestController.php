@@ -8,36 +8,59 @@ use App\Models\Role;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use App\Models\Classes;
 
 class LeaveRequestController extends Controller
 {
-    public function index()
-    {
-        $user = auth()->user();
+    public function index(Request $request)
+{
+    $user = auth()->user();
 
-        // Siswa/Ortu: pengajuan anaknya; Wali Kelas: kelas perwalian; Guru BK & Waka: semua
-        $requests = LeaveRequest::visibleTo($user)->with('student')->latest()->get();
+    // Siswa/Ortu: pengajuan anaknya; Wali Kelas: kelas perwalian; Guru BK & Waka: semua
+    $query = LeaveRequest::visibleTo($user)->with('student');
 
-        $attendances = collect();
-        $children = collect();
+    if ($request->filled('status')) {
+        $query->where('status_approval', $request->status);
+    }
+    if ($request->filled('type')) {
+        $query->where('type', $request->type);
+    }
+    if ($request->filled('q')) {
+        $query->whereHas('student', fn ($s) => $s->where('fullname', 'like', '%' . $request->q . '%'));
+    }
+    if ($request->filled('class_id')) {
+        $query->whereHas('student', fn ($s) => $s->where('class_id', $request->class_id));
+    }
+    if ($request->filled('start_date')) {
+        $query->whereDate('end_date', '>=', $request->start_date);
+    }
+    if ($request->filled('end_date')) {
+        $query->whereDate('start_date', '<=', $request->end_date);
+    }
 
-        if ($user->isPortalUser()) {
-            $studentIds = $user->portalStudentIds();
+    $requests = $query->latest()->get();
+    $classes = Classes::orderBy('class_name')->get();
 
-            if ($user->isRole(Role::ORTU)) {
-                $children = User::whereIn('id', $studentIds)->orderBy('fullname')->get();
-            }
+    $attendances = collect();
+    $children = collect();
 
-            // Rekap kehadiran untuk Siswa & Orang Tua
-            $attendances = Attendance::with(['student', 'journal.schedule'])
-                ->whereIn('student_id', $studentIds)
-                ->orderByDesc('date')
-                ->orderByDesc('id')
-                ->get();
+    if ($user->isPortalUser()) {
+        $studentIds = $user->portalStudentIds();
+
+        if ($user->isRole(Role::ORTU)) {
+            $children = User::whereIn('id', $studentIds)->orderBy('fullname')->get();
         }
 
-        return view('leave.index', compact('requests', 'attendances', 'children'));
+        // Rekap kehadiran untuk Siswa & Orang Tua
+        $attendances = Attendance::with(['student', 'journal.schedule'])
+            ->whereIn('student_id', $studentIds)
+            ->orderByDesc('date')
+            ->orderByDesc('id')
+            ->get();
     }
+
+    return view('leave.index', compact('requests', 'attendances', 'children', 'classes'));
+}
 
     public function store(Request $request)
     {
@@ -99,38 +122,27 @@ class LeaveRequestController extends Controller
     }
 
     public function verify(Request $request, $id, $status)
-    {
-        $user = auth()->user();
-        if (!$user->isRole(Role::WALI_KELAS, Role::GURU_BK)) {
-            abort(403, 'Hanya Wali Kelas atau Guru BK yang dapat memverifikasi izin.');
-        }
-
-        if (!in_array($status, ['approved', 'rejected', 'revisi'])) {
-            abort(400, 'Status tidak valid.');
-        }
-
-        // visibleTo: Wali Kelas hanya bisa memverifikasi siswa kelas perwaliannya
-        $leave = LeaveRequest::visibleTo($user)->findOrFail($id);
-
-        if (!in_array($leave->status_approval, ['pending', 'revisi'])) {
-            return back()->with('error', 'Pengajuan ini sudah diproses sebelumnya.');
-        }
-
-        // Alasan wajib diisi saat menolak atau meminta revisi; dilihat oleh siswa/orang tua
-        $note = null;
-        if (in_array($status, ['rejected', 'revisi'], true)) {
-            $note = trim((string) $request->input('alasan'));
-            if (mb_strlen($note) < 5) {
-                return back()->with('error', 'Alasan ' . ($status === 'rejected' ? 'penolakan' : 'revisi') . ' wajib diisi (minimal 5 karakter).');
-            }
-            $note = mb_substr($note, 0, 500);
-        }
-
-        $leave->status_approval = $status;
-        $leave->verified_by = $user->id;
-        $leave->verification_note = $note;
-        $leave->save();
-
-        return back()->with('success', 'Status surat izin berhasil diperbarui.');
+{
+    $user = auth()->user();
+    if (!$user->isRole(Role::WALI_KELAS, Role::GURU_BK)) {
+        abort(403, 'Hanya Wali Kelas atau Guru BK yang dapat memverifikasi izin.');
     }
+
+    if (!in_array($status, ['approved', 'rejected', 'revisi'])) {
+        abort(400, 'Status tidak valid.');
+    }
+
+    // visibleTo: Wali Kelas hanya bisa memverifikasi siswa kelas perwaliannya
+    $leave = LeaveRequest::visibleTo($user)->findOrFail($id);
+
+    if ($leave->status_approval === $status) {
+        return back()->with('error', 'Pengajuan ini sudah berstatus ' . $status . '.');
+    }
+
+    $leave->status_approval = $status;
+    $leave->verified_by = $user->id;
+    $leave->save();
+
+    return back()->with('success', 'Status surat izin berhasil diperbarui.');
+}
 }

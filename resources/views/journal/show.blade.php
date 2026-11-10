@@ -5,13 +5,17 @@
     @php
         $labels = ['hadir' => 'Hadir', 'sakit' => 'Sakit', 'izin' => 'Izin', 'izin_tengah_jam' => 'Izin Tengah Jam', 'dispensasi' => 'Dispensasi', 'alpha' => 'Alpha'];
         $summary = $attendances->groupBy('status')->map->count();
+
+        $canEdit = auth()->user()->isRole(\App\Models\Role::GURU)
+            && $journal->schedule->teacher_id == auth()->id()
+            && \Carbon\Carbon::parse($journal->date)->toDateString() === \Carbon\Carbon::now('Asia/Jakarta')->toDateString();
     @endphp
 
     <div class="d-flex align-items-center justify-content-between mb-3">
-        <h1 class="scp-page-title mb-0">Detail Jurnal & Presensi</h1>
+        <h5 class="fw-bold mb-0">Detail Jurnal & Presensi</h5>
         <div class="d-flex gap-2">
             @if($canEdit)
-                <a href="{{ route('journal.attendance.edit', $journal->id) }}" class="btn btn-sm btn-scp">Edit Presensi</a>
+                <a href="{{ route('journal.edit', $journal->id) }}" class="btn btn-sm btn-scp">Edit</a>
             @endif
             <a href="{{ route('journal.index') }}" class="btn btn-sm btn-outline-secondary">Kembali</a>
         </div>
@@ -40,7 +44,7 @@
         <div class="scp-card-header">Presensi Siswa</div>
         <div class="p-3 border-bottom d-flex flex-wrap gap-2">
             @foreach($labels as $key => $label)
-                @include('partials.status', ['type' => 'attendance', 'value' => $key, 'suffix' => ': ' . ($summary[$key] ?? 0)])
+                <span class="badge badge-soft">{{ $label }}: {{ $summary[$key] ?? 0 }}</span>
             @endforeach
         </div>
         <div class="table-responsive">
@@ -51,11 +55,11 @@
                         <tr>
                             <td>{{ $i + 1 }}</td>
                             <td>{{ $a->student->fullname ?? '-' }}</td>
-                            <td>@include('partials.status', ['type' => 'attendance', 'value' => $a->status])</td>
+                            <td><span class="badge badge-soft">{{ $labels[$a->status] ?? $a->status }}</span></td>
                             <td class="small text-secondary">{{ $a->source === 'sync_izin' ? 'Otomatis dari izin yang disetujui' : '-' }}</td>
                         </tr>
                     @empty
-                        <tr><td colspan="4" class="scp-empty">Belum ada data presensi.</td></tr>
+                        <tr><td colspan="4" class="text-center text-secondary py-4">Belum ada data presensi.</td></tr>
                     @endforelse
                 </tbody>
             </table>

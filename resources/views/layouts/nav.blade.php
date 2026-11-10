@@ -6,10 +6,10 @@
         ['dashboard', 'Dashboard', 'bi-speedometer2', null],
         ['schedule.index', 'Jadwal', 'bi-calendar3', [Role::WAKA, Role::GURU, Role::WALI_KELAS, Role::GURU_BK]],
         ['journal.index', 'Jurnal', 'bi-journal-text', [Role::WAKA, Role::GURU, Role::WALI_KELAS, Role::GURU_BK]],
+        ['reports.daily', 'Rekap Harian', 'bi-clipboard-data', [Role::GURU]],
         ['attendance.mine', 'Presensi', 'bi-calendar-check', [Role::SISWA, Role::ORTU]],
         ['leave.index', 'Izin', 'bi-file-earmark-medical', [Role::SISWA, Role::ORTU, Role::WALI_KELAS, Role::GURU_BK, Role::WAKA]],
         ['reports.attendance', 'Rekap', 'bi-bar-chart-line', [Role::WAKA, Role::WALI_KELAS, Role::GURU_BK]],
-        ['reports.leave.daily', 'Izin Harian', 'bi-calendar-x', [Role::WALI_KELAS, Role::GURU_BK]],
         ['users.index', 'Manajemen Data', 'bi-gear', [Role::WAKA]],
         ['profile.edit', 'Profil', 'bi-person-circle', null],
     ];

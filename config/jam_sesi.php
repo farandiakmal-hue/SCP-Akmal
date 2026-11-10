@@ -1,31 +1,33 @@
 <?php
 
 /*
- | Jam sesi pelajaran SMK Negeri 1 Bantul (sesuai jadwal FET 2026/2027).
- | - 10 jam pelajaran @45 menit, mulai 07:15 dan selesai 15:30.
- | - Istirahat diturunkan dari celah antar-jam pada jadwal FET:
- |   09:30-09:45 (antara jam ke-3 dan ke-4) dan 12:00-12:30 (antara jam ke-6 dan ke-7).
- |   Bila waktu istirahat resmi berbeda, ubah daftar 'istirahat' di bawah.
- | Form jadwal dan pengecekan istirahat mengikuti daftar ini.
+ | Jam sesi pelajaran sekolah.
+ | - Sesi 1 mulai 07:15, tiap sesi 35 menit, berlanjut sampai jam pulang 15:30.
+ | - Istirahat: 10:00-10:20 dan 11:45-12:40 (sesi tidak boleh melewati istirahat,
+ |   sehingga sesi 5, 8, dan 13 lebih pendek).
+ | Ubah daftar di bawah bila jam sekolah berubah; form jadwal ikut menyesuaikan.
  */
 return [
     'sekolah' => ['mulai' => '07:15', 'selesai' => '15:30'],
 
     'istirahat' => [
-        ['Istirahat 1', '09:30', '09:45'],
-        ['Istirahat 2', '12:00', '12:30'],
+        ['Istirahat 1', '10:00', '10:20'],
+        ['Istirahat 2', '11:45', '12:40'],
     ],
 
     'sesi' => [
-        1  => ['07:15', '08:00'],
-        2  => ['08:00', '08:45'],
-        3  => ['08:45', '09:30'],
-        4  => ['09:45', '10:30'],
-        5  => ['10:30', '11:15'],
-        6  => ['11:15', '12:00'],
-        7  => ['12:30', '13:15'],
-        8  => ['13:15', '14:00'],
-        9  => ['14:00', '14:45'],
-        10 => ['14:45', '15:30'],
+        1  => ['07:15', '07:50'],
+        2  => ['07:50', '08:25'],
+        3  => ['08:25', '09:00'],
+        4  => ['09:00', '09:35'],
+        5  => ['09:35', '10:00'],
+        6  => ['10:20', '10:55'],
+        7  => ['10:55', '11:30'],
+        8  => ['11:30', '11:45'],
+        9  => ['12:40', '13:15'],
+        10 => ['13:15', '13:50'],
+        11 => ['13:50', '14:25'],
+        12 => ['14:25', '15:00'],
+        13 => ['15:00', '15:30'],
     ],
 ];

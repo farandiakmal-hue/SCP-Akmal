@@ -2,7 +2,7 @@
 @section('title', 'Riwayat Jurnal')
 
 @section('content')
-    <h1 class="scp-page-title">Riwayat Jurnal</h1>
+    <h5 class="fw-bold mb-3">Riwayat Jurnal</h5>
 
     <div class="scp-card">
         <div class="table-responsive">
@@ -34,10 +34,13 @@
                             </td>
                         </tr>
                     @empty
-                        <tr><td colspan="7" class="scp-empty">Belum ada jurnal.</td></tr>
+                        <tr><td colspan="7" class="text-center text-secondary py-4">Belum ada jurnal.</td></tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+        @if($journals->hasPages())
+            <div class="p-3 border-top">{{ $journals->links() }}</div>
+        @endif
     </div>
 @endsection

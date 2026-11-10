@@ -36,7 +36,7 @@ class JournalController extends Controller
             $query->whereHas('schedule', fn ($q) => $classId ? $q->where('class_id', $classId) : $q->whereRaw('1 = 0'));
         }
 
-        $journals = $query->latest()->get();
+                $journals = $query->orderByDesc('date')->orderByDesc('id')->paginate(15);
         return view('journal.index', compact('journals'));
     }
 
@@ -50,85 +50,7 @@ class JournalController extends Controller
             ->sortBy(fn ($a) => $a->student->fullname ?? '')
             ->values();
 
-        $user = auth()->user();
-        $canEdit = $user->isRole(Role::GURU) && $journal->schedule->teacher_id == $user->id;
-
-        return view('journal.show', compact('journal', 'attendances', 'canEdit'));
-    }
-
-    // Guru mengubah daftar hadir pada jurnal miliknya (presensi dari izin Approved tidak diubah)
-    public function editAttendance($id)
-    {
-        $journal = Journal::with('schedule.class')->findOrFail($id);
-        $this->authorizeAttendanceEdit($journal);
-
-        [$students, $rows] = $this->attendanceData($journal);
-        return view('journal.attendance-edit', compact('journal', 'students', 'rows'));
-    }
-
-    public function updateAttendance(Request $request, $id)
-    {
-        $journal = Journal::with('schedule')->findOrFail($id);
-        $this->authorizeAttendanceEdit($journal);
-
-        $request->validate([
-            'attendance'   => 'nullable|array',
-            'attendance.*' => 'in:hadir,sakit,izin,izin_tengah_jam,dispensasi,alpha',
-        ]);
-
-        [$students, $rows] = $this->attendanceData($journal);
-        $date = Carbon::parse($journal->date)->toDateString();
-
-        DB::transaction(function () use ($students, $rows, $request, $journal, $date) {
-            foreach ($students as $student) {
-                $row = $rows->get($student->id);
-
-                // Presensi hasil sinkronisasi izin yang disetujui tidak dapat diubah guru
-                if ($row && $row->source === 'sync_izin') {
-                    continue;
-                }
-
-                $status = $request->input('attendance.' . $student->id, $row->status ?? 'hadir');
-
-                if ($row) {
-                    if ($row->status !== $status) {
-                        $row->status = $status;
-                        $row->source = 'manual';
-                        $row->save();
-                    }
-                } else {
-                    // Siswa yang belum tercatat (misalnya baru ditambahkan ke kelas)
-                    Attendance::create([
-                        'journal_id' => $journal->id,
-                        'student_id' => $student->id,
-                        'status'     => $status,
-                        'date'       => $date,
-                        'source'     => 'manual',
-                    ]);
-                }
-            }
-        });
-
-        return redirect()->route('journal.show', $journal->id)->with('success', 'Daftar hadir berhasil diperbarui.');
-    }
-
-    private function authorizeAttendanceEdit(Journal $journal): void
-    {
-        $user = auth()->user();
-        if (!$user->isRole(Role::GURU) || $journal->schedule->teacher_id != $user->id) {
-            abort(403, 'Hanya guru pemilik jurnal yang dapat mengubah daftar hadir.');
-        }
-    }
-
-    private function attendanceData(Journal $journal): array
-    {
-        $students = User::where('role_id', Role::SISWA)
-            ->where('class_id', $journal->schedule->class_id)
-            ->orderBy('fullname')
-            ->get();
-        $rows = Attendance::where('journal_id', $journal->id)->get()->keyBy('student_id');
-
-        return [$students, $rows];
+        return view('journal.show', compact('journal', 'attendances'));
     }
 
     // Menampilkan foto bukti langsung lewat aplikasi (tanpa perlu php artisan storage:link)
@@ -261,6 +183,78 @@ class JournalController extends Controller
         });
 
         return redirect()->route('dashboard')->with('success', 'Jurnal & presensi berhasil disimpan!');
+    }
+        public function edit($id)
+    {
+        $journal = Journal::with(['schedule.class', 'attendances.student'])->findOrFail($id);
+
+        if ($error = $this->journalNotEditableError($journal)) {
+            return redirect()->route('journal.show', $journal->id)->with('error', $error);
+        }
+
+        $attendances = $journal->attendances
+            ->sortBy(fn ($a) => $a->student->fullname ?? '')
+            ->values();
+
+        return view('journal.edit', compact('journal', 'attendances'));
+    }
+
+    public function update(Request $request, $id)
+    {
+        $journal = Journal::with('schedule')->findOrFail($id);
+
+        if ($error = $this->journalNotEditableError($journal)) {
+            return redirect()->route('journal.show', $journal->id)->with('error', $error);
+        }
+
+        $request->validate([
+            'topic_description' => 'required|string',
+            'photo'             => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
+            'attendance'        => 'nullable|array',
+            'attendance.*'      => 'in:hadir,sakit,izin,izin_tengah_jam,dispensasi,alpha',
+        ]);
+
+        $oldPhoto = $journal->photo_path;
+
+        DB::transaction(function () use ($request, $journal) {
+            $data = ['topic_description' => $request->topic_description];
+
+            if ($request->hasFile('photo')) {
+                $data['photo_path'] = $request->file('photo')->store('journals', 'public');
+            }
+
+            $journal->update($data);
+
+            // Hanya presensi manual yang boleh diubah (hasil sinkronisasi izin tetap)
+            foreach ($request->input('attendance', []) as $studentId => $status) {
+                Attendance::where('journal_id', $journal->id)
+                    ->where('student_id', $studentId)
+                    ->where('source', 'manual')
+                    ->update(['status' => $status]);
+            }
+        });
+
+        if ($request->hasFile('photo') && $oldPhoto) {
+            Storage::disk('public')->delete($oldPhoto);
+        }
+
+        return redirect()->route('journal.show', $journal->id)->with('success', 'Jurnal berhasil diperbarui.');
+    }
+
+    // Jurnal hanya bisa diedit oleh guru pemiliknya dan hanya pada tanggal jurnal itu dibuat
+    private function journalNotEditableError(Journal $journal): ?string
+    {
+        $user = auth()->user();
+
+        if (!$user->isRole(Role::GURU) || $journal->schedule->teacher_id != $user->id) {
+            return 'Hanya guru pemilik jurnal yang dapat mengedit jurnal ini.';
+        }
+
+        if (Carbon::parse($journal->date)->toDateString() !== $this->today()) {
+            return 'Jurnal hanya dapat diedit pada hari yang sama dengan tanggal jurnal.';
+        }
+
+        return null;
     }
 
     private function today(): string

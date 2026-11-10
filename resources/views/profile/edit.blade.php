@@ -2,45 +2,56 @@
 @section('title', 'Profil Saya')
 
 @section('content')
-    <h1 class="scp-page-title">Update Profil</h1>
+    <h5 class="fw-bold mb-3">Update Profil</h5>
 
-    <div class="scp-card" style="max-width: 480px;">
-        <div class="p-3">
-            <form action="{{ route('profile.update') }}" method="POST">
-                @csrf
-                @method('PUT')
-                <div class="mb-3">
-                    <label class="form-label">Nama Lengkap</label>
-                    <input type="text" name="fullname" class="form-control form-control-sm" value="{{ old('fullname', $user->fullname) }}" required>
+    <form action="{{ route('profile.update') }}" method="POST">
+        @csrf
+        @method('PUT')
+
+        <div class="row g-3">
+            <div class="col-lg-6">
+                <div class="scp-card h-100">
+                    <div class="p-3">
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Nama Lengkap</label>
+                            <input type="text" name="fullname" class="form-control" value="{{ old('fullname', $user->fullname) }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Username</label>
+                            <input type="text" name="username" class="form-control" value="{{ old('username', $user->username) }}" required>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Email (untuk reset password)</label>
+                            <input type="email" name="email" class="form-control" value="{{ old('email', $user->email) }}" placeholder="nama@email.com">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small fw-medium">Role</label>
+                            <input type="text" class="form-control" value="{{ $user->roleLabel() }}" disabled>
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Username</label>
-                    <input type="text" name="username" class="form-control form-control-sm" value="{{ old('username', $user->username) }}" required>
+            </div>
+
+            <div class="col-lg-6">
+                <div class="scp-card h-100">
+                    <div class="p-3">
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Password Saat Ini</label>
+                            <input type="password" name="current_password" class="form-control" placeholder="Isi hanya jika ingin ganti password">
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label small fw-medium">Password Baru</label>
+                            <input type="password" name="password" class="form-control" placeholder="Kosongkan jika tidak ganti">
+                        </div>
+                        <div class="mb-0">
+                            <label class="form-label small fw-medium">Konfirmasi Password Baru</label>
+                            <input type="password" name="password_confirmation" class="form-control">
+                        </div>
+                    </div>
                 </div>
-                <div class="mb-3">
-                    <label class="form-label">Email (untuk reset password)</label>
-                    <input type="email" name="email" class="form-control form-control-sm" value="{{ old('email', $user->email) }}" placeholder="nama@email.com">
-                    <div class="form-text">Kode reset password akan dikirim ke email ini bila Anda lupa password.</div>
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Role</label>
-                    <input type="text" class="form-control form-control-sm" value="{{ $user->roleLabel() }}" disabled>
-                </div>
-                <hr>
-                <div class="mb-3">
-                    <label class="form-label">Password Saat Ini</label>
-                    <input type="password" name="current_password" class="form-control form-control-sm" placeholder="Isi hanya jika ingin ganti password">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Password Baru</label>
-                    <input type="password" name="password" class="form-control form-control-sm" placeholder="Kosongkan jika tidak ganti">
-                </div>
-                <div class="mb-3">
-                    <label class="form-label">Konfirmasi Password Baru</label>
-                    <input type="password" name="password_confirmation" class="form-control form-control-sm">
-                </div>
-                <button type="submit" class="btn btn-scp">Simpan Perubahan</button>
-            </form>
+            </div>
         </div>
-    </div>
+
+        <button type="submit" class="btn btn-scp mt-3">Simpan Perubahan</button>
+    </form>
 @endsection

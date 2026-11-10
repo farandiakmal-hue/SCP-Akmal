@@ -3,11 +3,11 @@
 namespace App\Http\Controllers;
 
 use App\Models\Attendance;
-use App\Models\Classes;
-use App\Models\LeaveRequest;
 use App\Models\Role;
-use Carbon\Carbon;
 use Illuminate\Http\Request;
+use App\Models\Classes;
+use App\Models\Journal;
+use Carbon\Carbon;
 
 class ReportController extends Controller
 {
@@ -57,95 +57,6 @@ class ReportController extends Controller
         return response()->stream($callback, 200, $headers);
     }
 
-    // Laporan izin siswa harian: siapa saja yang izin/sakit pada tanggal tertentu
-    public function leaveDaily(Request $request)
-    {
-        $this->authorizeLeaveDailyReport();
-
-        $date = $this->reportDate($request);
-        $status = $request->input('status', 'approved');
-        $leaves = $this->leaveDailyData($request, $date, $status);
-        $classes = Classes::orderBy('class_name')->get();
-
-        return view('reports.leave-daily', compact('leaves', 'date', 'status', 'classes'));
-    }
-
-    public function exportLeaveDailyCsv(Request $request)
-    {
-        $this->authorizeLeaveDailyReport();
-
-        $date = $this->reportDate($request);
-        $leaves = $this->leaveDailyData($request, $date, $request->input('status', 'approved'));
-
-        $headers = [
-            'Content-type'        => 'text/csv; charset=UTF-8',
-            'Content-Disposition' => "attachment; filename=laporan_izin_harian_{$date}.csv",
-            'Pragma'              => 'no-cache',
-            'Cache-Control'       => 'must-revalidate, post-check=0, pre-check=0',
-            'Expires'             => '0',
-        ];
-
-        $callback = function () use ($leaves, $date) {
-            $file = fopen('php://output', 'w');
-            fwrite($file, "\xEF\xBB\xBF"); // BOM agar terbaca benar di Excel
-            fputcsv($file, ['Tanggal Laporan', 'Nama Siswa', 'Kelas', 'Jenis', 'Mulai', 'Selesai', 'Alasan', 'Status', 'Catatan Verifikasi', 'Diverifikasi Oleh']);
-
-            foreach ($leaves as $l) {
-                fputcsv($file, [
-                    $date,
-                    $l->student->fullname ?? '-',
-                    $l->student->classRoom->class_name ?? '-',
-                    ucfirst(str_replace('_', ' ', $l->type)),
-                    $l->start_date,
-                    $l->end_date,
-                    $l->reason,
-                    $l->status_approval,
-                    $l->verification_note,
-                    $l->verifier->fullname ?? '-',
-                ]);
-            }
-            fclose($file);
-        };
-
-        return response()->stream($callback, 200, $headers);
-    }
-
-    private function reportDate(Request $request): string
-    {
-        $d = (string) $request->input('date');
-        return preg_match('/^\d{4}-\d{2}-\d{2}$/', $d) ? $d : Carbon::now('Asia/Jakarta')->toDateString();
-    }
-
-    // Izin yang mencakup tanggal laporan (Wali Kelas: hanya kelas perwalian)
-    private function leaveDailyData(Request $request, string $date, string $status)
-    {
-        $user = auth()->user();
-
-        $query = LeaveRequest::visibleTo($user)
-            ->with(['student.classRoom', 'verifier'])
-            ->whereDate('start_date', '<=', $date)
-            ->whereDate('end_date', '>=', $date);
-
-        if (in_array($status, ['pending', 'approved', 'rejected', 'revisi'], true)) {
-            $query->where('status_approval', $status);
-        }
-
-        if ($request->filled('class_id') && !$user->isRole(Role::WALI_KELAS)) {
-            $classId = (int) $request->class_id;
-            $query->whereHas('student', fn ($s) => $s->where('class_id', $classId));
-        }
-
-        return $query->get()->sortBy(fn ($l) => $l->student->fullname ?? '')->values();
-    }
-
-    // Laporan Izin Harian hanya untuk Wali Kelas dan Guru BK (Waka tidak)
-    private function authorizeLeaveDailyReport(): void
-    {
-        if (!auth()->user()->isRole(Role::WALI_KELAS, Role::GURU_BK)) {
-            abort(403);
-        }
-    }
-
     private function authorizeReport(): void
     {
         if (!auth()->user()->isRole(Role::WAKA, Role::WALI_KELAS, Role::GURU_BK)) {
@@ -179,4 +90,38 @@ class ReportController extends Controller
 
         return $query->orderByDesc('date')->orderByDesc('id');
     }
+    // Rekap presensi harian untuk Guru: satu baris per jurnal (pertemuan) pada tanggal terpilih
+public function dailyRecap(Request $request)
+{
+    $user = auth()->user();
+    if (!$user->isRole(Role::GURU)) {
+        abort(403, 'Rekap harian hanya untuk Guru.');
+    }
+
+    $date = $request->input('date', Carbon::now('Asia/Jakarta')->toDateString());
+
+    $journals = Journal::with(['schedule.class'])
+        ->withCount([
+            'attendances as total_count',
+            'attendances as hadir_count'      => fn ($q) => $q->where('status', 'hadir'),
+            'attendances as sakit_count'      => fn ($q) => $q->where('status', 'sakit'),
+            'attendances as izin_count'       => fn ($q) => $q->whereIn('status', ['izin', 'izin_tengah_jam']),
+            'attendances as dispensasi_count' => fn ($q) => $q->where('status', 'dispensasi'),
+            'attendances as alpha_count'      => fn ($q) => $q->where('status', 'alpha'),
+        ])
+        ->whereDate('date', $date)
+        ->whereHas('schedule', function ($q) use ($user, $request) {
+            $q->where('teacher_id', $user->id);
+            if ($request->filled('class_id')) {
+                $q->where('class_id', $request->class_id);
+            }
+        })
+        ->get()
+        ->sortBy(fn ($j) => $j->schedule->start_time)
+        ->values();
+
+    $classes = Classes::orderBy('class_name')->get();
+
+    return view('reports.daily', compact('journals', 'classes', 'date'));
+}
 }

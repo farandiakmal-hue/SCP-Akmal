@@ -1,14 +1,19 @@
 @extends('layouts.app')
-@section('title', 'Manajemen Data - Pengguna')
+@section('title', 'Manajemen Data - Pengguna')   
 
 @section('content')
-    <h1 class="scp-page-title">Manajemen Data</h1>
+    <h5 class="fw-bold mb-3">Manajemen Data</h5>
+    <ul class="nav nav-tabs mb-3"></ul>
     <ul class="nav nav-tabs mb-3">
         <li class="nav-item"><a class="nav-link active" href="{{ route('users.index') }}">Pengguna</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ route('classes.index') }}">Kelas</a></li>
         <li class="nav-item"><a class="nav-link" href="{{ route('rooms.index') }}">Ruangan</a></li>
-        <li class="nav-item"><a class="nav-link" href="{{ route('import.index') }}">Import</a></li>
     </ul>
+    @include('master.import', [
+    'action' => route('master.users.import'),
+    'type'   => 'users',
+    'hint'   => 'Kolom: fullname, username, password, role, class, parent_username. Role ditulis sesuai nama di pilihan Role (atau ID 1-6). Kelas harus sudah ada. Akun Orang Tua diimpor sebelum siswanya.',
+])
 
     <div class="scp-card mb-4">
         <div class="scp-card-header">Tambah Pengguna</div>
@@ -16,19 +21,19 @@
             <form action="{{ route('master.users.store') }}" method="POST" class="row g-2">
                 @csrf
                 <div class="col-md-3">
-                    <label class="form-label">Nama Lengkap</label>
+                    <label class="form-label small">Nama Lengkap</label>
                     <input type="text" name="fullname" class="form-control form-control-sm" required>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Username</label>
+                    <label class="form-label small">Username</label>
                     <input type="text" name="username" class="form-control form-control-sm" required>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Password</label>
+                    <label class="form-label small">Password</label>
                     <input type="password" name="password" class="form-control form-control-sm" required>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Role</label>
+                    <label class="form-label small">Role</label>
                     <select name="role_id" class="form-select form-select-sm" required>
                         @foreach($roles as $r)
                             <option value="{{ $r->id }}">{{ $r->role_name }}</option>
@@ -36,7 +41,7 @@
                     </select>
                 </div>
                 <div class="col-md-2">
-                    <label class="form-label">Kelas (jika siswa)</label>
+                    <label class="form-label small">Kelas (jika siswa)</label>
                     <select name="class_id" class="form-select form-select-sm">
                         <option value="">-</option>
                         @foreach($classes as $c)
@@ -45,11 +50,7 @@
                     </select>
                 </div>
                 <div class="col-md-3">
-                    <label class="form-label">Email (opsional)</label>
-                    <input type="email" name="email" class="form-control form-control-sm" placeholder="untuk reset password">
-                </div>
-                <div class="col-md-3">
-                    <label class="form-label">Orang Tua (jika siswa)</label>
+                    <label class="form-label small">Orang Tua (jika siswa)</label>
                     <select name="parent_id" class="form-select form-select-sm">
                         <option value="">-</option>
                         @foreach($parents as $p)
@@ -63,35 +64,38 @@
             </form>
         </div>
     </div>
-
-    <div class="scp-card mb-3">
-        <form method="GET" action="{{ route('users.index') }}" class="row g-2 p-3">
-            <div class="col-md-4">
-                <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm" placeholder="Cari nama, username, atau email">
-            </div>
-            <div class="col-md-3">
-                <select name="role_id" class="form-select form-select-sm">
-                    <option value="">Semua role</option>
-                    @foreach($roles as $r)
-                        <option value="{{ $r->id }}" @selected(request('role_id') == $r->id)>{{ $r->role_name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-3">
-                <select name="class_id" class="form-select form-select-sm">
-                    <option value="">Semua kelas</option>
-                    @foreach($classes as $c)
-                        <option value="{{ $c->id }}" @selected(request('class_id') == $c->id)>{{ $c->class_name }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div class="col-md-2 d-flex gap-1">
-                <button class="btn btn-scp btn-sm flex-fill" type="submit">Filter</button>
-                <a href="{{ route('users.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
-            </div>
-        </form>
+        <div class="scp-card mb-3">
+        <div class="p-3">
+            <form method="GET" action="{{ route('users.index') }}" class="row g-2">
+                <div class="col-md-4">
+                    <label class="form-label small">Cari nama / username</label>
+                    <input type="text" name="q" value="{{ request('q') }}" class="form-control form-control-sm">
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Role</label>
+                    <select name="role_id" class="form-select form-select-sm">
+                        <option value="">Semua</option>
+                        @foreach($roles as $r)
+                            <option value="{{ $r->id }}" @selected(request('role_id') == $r->id)>{{ $r->role_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-3">
+                    <label class="form-label small">Kelas</label>
+                    <select name="class_id" class="form-select form-select-sm">
+                        <option value="">Semua</option>
+                        @foreach($classes as $c)
+                            <option value="{{ $c->id }}" @selected(request('class_id') == $c->id)>{{ $c->class_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="col-md-2 d-flex align-items-end gap-2">
+                    <button class="btn btn-scp btn-sm flex-fill" type="submit">Filter</button>
+                    <a href="{{ route('users.index') }}" class="btn btn-sm btn-outline-secondary">Reset</a>
+                </div>
+            </form>
+        </div>
     </div>
-
     <div class="scp-card">
         <div class="table-responsive">
             <table class="table align-middle mb-0">
@@ -101,7 +105,7 @@
                         <tr>
                             <td>{{ $u->fullname }}</td>
                             <td>{{ $u->username }}</td>
-                            <td><span class="scp-badge is-muted">{{ $u->role->role_name ?? '-' }}</span></td>
+                            <td><span class="badge badge-soft">{{ $u->role->role_name ?? '-' }}</span></td>
                             <td>{{ $u->classRoom->class_name ?? '-' }}</td>
                             <td class="text-end">
                                 <form action="{{ route('master.users.destroy', $u->id) }}" method="POST" onsubmit="return confirm('Hapus pengguna ini?')">
@@ -114,9 +118,14 @@
                 </tbody>
             </table>
         </div>
-    </div>
-    <div class="d-flex justify-content-between align-items-center mt-3">
-        <small class="text-muted">{{ $users->total() }} pengguna</small>
-        {{ $users->links() }}
+        @if($users->hasPages())
+            <div class="p-3 border-top">{{ $users->links() }}</div>
+        @endif
+        @include('master.delete_all', [
+    'action'  => route('master.users.destroyAll'),
+    'label'   => 'Hapus semua (' . $users->total() . ' pengguna)',
+    'warning' => 'Menghapus pengguna sesuai filter di atas (tanpa filter berarti semua pengguna), kecuali akun Waka Kurikulum dan akun Anda. Jadwal, presensi, dan izin milik pengguna yang dihapus ikut terhapus.',
+    'filters' => request()->only(['q', 'role_id', 'class_id']),
+])
     </div>
 @endsection
